@@ -381,7 +381,7 @@ const App = () => {
                   ></textarea>
                   <div className="flex justify-center">
                     <button
-                      onClick={getCareRecommendation}
+                      // onClick={getCareRecommendation}
                       className={`${accentColor} ${whiteText} font-bold py-3 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-700 flex items-center`}
                       disabled={isLoadingRecommendation}
                     >
