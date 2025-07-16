@@ -39,6 +39,38 @@ const ServiceDetailPage = (
   </section>
 ); // Added closing parenthesis here
 
+// Add Gemini API call function
+async function getGeminiRecommendation(input) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key is missing. Please set VITE_GEMINI_API_KEY in your .env file.");
+  }
+  // Example Gemini API endpoint (replace with actual endpoint if different)
+  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + apiKey;
+  const body = {
+    contents: [
+      {
+        parts: [
+          { text: `Suggest the most relevant care services for the following needs: ${input}` }
+        ]
+      }
+    ]
+  };
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    throw new Error("Failed to get recommendation from Gemini API");
+  }
+  const data = await response.json();
+  // Parse the response to get the recommendation text
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No recommendation found.";
+}
+
 const App = () => {
   // State to manage which service detail page is currently displayed
   const [selectedService, setSelectedService] = useState(null);
@@ -46,6 +78,20 @@ const App = () => {
   const [careNeedsInput, setCareNeedsInput] = useState("");
   const [recommendationOutput, setRecommendationOutput] = useState("");
   const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
+
+  // Add handler for recommendation button
+  const handleGetRecommendation = async () => {
+    setIsLoadingRecommendation(true);
+    setRecommendationOutput("");
+    try {
+      const recommendation = await getGeminiRecommendation(careNeedsInput);
+      setRecommendationOutput(recommendation);
+    } catch (error) {
+      setRecommendationOutput(error.message);
+    } finally {
+      setIsLoadingRecommendation(false);
+    }
+  };
 
   // Define a consistent color palette using Tailwind CSS classes
   const primaryColor = "bg-blue-700"; // Darker blue for accents - used for header, footer and contact section
@@ -381,7 +427,7 @@ const App = () => {
                   ></textarea>
                   <div className="flex justify-center">
                     <button
-                      // onClick={getCareRecommendation}
+                      onClick={handleGetRecommendation}
                       className={`${accentColor} ${whiteText} font-bold py-3 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-700 flex items-center`}
                       disabled={isLoadingRecommendation}
                     >
