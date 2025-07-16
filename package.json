@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.0.0",
     "autoprefixer": "^10.4.21",
+    "emailjs-com": "^3.2.0",
     "lucide-react": "^0.303.0",
     "postcss": "^8.4.35",
     "react": "^18.2.0",

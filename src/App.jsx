@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react";
+import emailjs from "emailjs-com";
 
 // Define ServiceDetailPage component outside App for clarity and to resolve potential parsing issues
 const ServiceDetailPage = (
@@ -71,6 +72,10 @@ async function getGeminiRecommendation(input) {
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No recommendation found.";
 }
 
+const EMAILJS_SERVICE_ID = "service_mhbdu6x"; // <-- You need to fill in your actual EmailJS service ID
+const EMAILJS_TEMPLATE_ID = "template_r6jb5z7";
+const EMAILJS_USER_ID = "Yy6gyZz5u9MhzViD1";
+
 const App = () => {
   // State to manage which service detail page is currently displayed
   const [selectedService, setSelectedService] = useState(null);
@@ -78,6 +83,13 @@ const App = () => {
   const [careNeedsInput, setCareNeedsInput] = useState("");
   const [recommendationOutput, setRecommendationOutput] = useState("");
   const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
+
+  // State for contact form
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactStatus, setContactStatus] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   // Add handler for recommendation button
   const handleGetRecommendation = async () => {
@@ -90,6 +102,33 @@ const App = () => {
       setRecommendationOutput(error.message);
     } finally {
       setIsLoadingRecommendation(false);
+    }
+  };
+
+  // EmailJS handler
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setIsSending(true);
+    setContactStatus("");
+    try {
+      const result = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          from_name: contactName,
+          from_email: contactEmail,
+          message: contactMessage,
+        },
+        EMAILJS_USER_ID
+      );
+      setContactStatus("Message sent successfully!");
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+    } catch (error) {
+      setContactStatus("Failed to send message. Please try again later.");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -457,7 +496,7 @@ const App = () => {
                 <h3 className="text-2xl font-bold text-blue-800 mb-4 text-center">
                   Or Send Us a Message
                 </h3>
-                <form>
+                <form onSubmit={handleContactSubmit}>
                   <div className="mb-4">
                     <label
                       htmlFor="name"
@@ -471,6 +510,9 @@ const App = () => {
                       name="name"
                       className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Your Name"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      required
                     />
                   </div>
                   <div className="mb-4">
@@ -486,6 +528,9 @@ const App = () => {
                       name="email"
                       className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="your@example.com"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      required
                     />
                   </div>
                   <div className="mb-6">
@@ -501,16 +546,23 @@ const App = () => {
                       rows="5"
                       className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Tell us about your needs..."
+                      value={contactMessage}
+                      onChange={(e) => setContactMessage(e.target.value)}
+                      required
                     ></textarea>
                   </div>
                   <div className="flex justify-center">
                     <button
                       type="submit"
                       className={`${accentColor} ${whiteText} font-bold py-3 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-700`}
+                      disabled={isSending}
                     >
-                      Send Message
+                      {isSending ? "Sending..." : "Send Message"}
                     </button>
                   </div>
+                  {contactStatus && (
+                    <div className="mt-4 text-center text-blue-700 font-semibold">{contactStatus}</div>
+                  )}
                 </form>
                 <div className="mt-8 text-center">
                   <p className={`${lightTextColor} text-lg mb-2`}>
