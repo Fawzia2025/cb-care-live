@@ -115,11 +115,11 @@ const App = () => {
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          user_name: contactName,
-          user_email: contactEmail,
-          user_message: contactMessage,
-          to_name: "Central Bridge Care",
-          reply_to: contactEmail,
+          name: contactName,
+          email: contactEmail,
+          message: contactMessage,
+          title: "Central Bridge Care",
+          email: contactEmail,
         },
         EMAILJS_USER_ID
       );
