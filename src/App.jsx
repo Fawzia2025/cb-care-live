@@ -63,9 +63,9 @@ async function getGeminiRecommendation(input) {
   }
 }
 
-const EMAILJS_SERVICE_ID = "service_mhbdu6x"; // <-- You need to fill in your actual EmailJS service ID
-const EMAILJS_TEMPLATE_ID = "template_f76qyqe";
-const EMAILJS_USER_ID = "Yy6gyZz5u9MhzViD1";
+const EMAILJS_SERVICE_ID =  import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_USER_ID = import.meta.env.VITE_EMAILJS_USER_ID;
 
 const App = () => {
   // State to manage which service detail page is currently displayed
