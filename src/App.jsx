@@ -73,7 +73,7 @@ async function getGeminiRecommendation(input) {
 }
 
 const EMAILJS_SERVICE_ID = "service_mhbdu6x"; // <-- You need to fill in your actual EmailJS service ID
-const EMAILJS_TEMPLATE_ID = "template_r6jb5z7";
+const EMAILJS_TEMPLATE_ID = "template_f76qyqe";
 const EMAILJS_USER_ID = "Yy6gyZz5u9MhzViD1";
 
 const App = () => {
