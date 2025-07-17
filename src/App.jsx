@@ -13,6 +13,12 @@ import {
   Menu,
   X,
 } from "lucide-react"; // Added Menu and X icons
+import emailjs from "emailjs-com";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_USER_ID = import.meta.env.VITE_EMAILJS_USER_ID;
 
 const App = () => {
   // State to manage which service detail page is currently displayed
@@ -23,6 +29,11 @@ const App = () => {
   const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
   // State for mobile menu visibility
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactStatus, setContactStatus] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   // Define a consistent color palette using Tailwind CSS classes
   const primaryColor = "bg-blue-700"; // Darker blue for accents - used for header, footer and contact section
@@ -179,55 +190,69 @@ const App = () => {
       .join("\n");
 
     const prompt = `You are a helpful assistant for Central Bridge Care, a domiciliary care provider in Birmingham.
-    Based on the user's described needs, recommend one or more of our services. Explain why the recommended service(s) are a good fit.
-    If no services are a perfect fit, suggest contacting us for a custom solution.
-    
-    Our available services are:
-    ${serviceListForLLM}
-    
-    User's needs: "${careNeedsInput}"
-    
-    Please provide your recommendation in a clear, friendly, and concise manner, directly addressing the user's needs.`; // Fixed unterminated string literal
-
-    let chatHistory = [];
-    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-
-    const payload = { contents: chatHistory };
-    //const apiKey = process.env.REACT_APP_GEMINI_API_KEY; // Reads from environment variable
-    const apiKey = import.meta.env.VITE_REACT_APP_GEMINI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  Based on the user's described needs, recommend one or more of our services. Explain why the recommended service(s) are a good fit.
+  If no services are a perfect fit, suggest contacting us for a custom solution.
+  
+  Our available services are:
+  ${serviceListForLLM}
+  
+  User's needs: "${careNeedsInput}"
+  
+  Please provide your recommendation in a clear, friendly, and concise manner, directly addressing the user's needs.`;
 
     try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json();
-      if (
-        result.candidates &&
-        result.candidates.length > 0 &&
-        result.candidates[0].content &&
-        result.candidates[0].content.parts &&
-        result.candidates[0].content.parts.length > 0
-      ) {
-        const text = result.candidates[0].content.parts[0].text;
-        setRecommendationOutput(text);
-      } else {
-        setRecommendationOutput(
-          "Sorry, I could not generate a recommendation at this time. Please try again or contact us directly."
+      const apiKey = import.meta.env.VITE_REACT_APP_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error(
+          "Gemini API key is missing. Please set VITE_REACT_APP_GEMINI_API_KEY in your .env file."
         );
       }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      setRecommendationOutput(responseText || "No recommendation found.");
     } catch (error) {
-      console.error("Error calling Gemini API:", error);
+      console.error("Gemini API error:", error);
       setRecommendationOutput(
         "There was an error getting a recommendation. Please try again later."
       );
     } finally {
-      setIsLoadingRecommendation(false);
+      setIsLoadingRecommendation_widgets(false);
     }
   };
 
+  // EmailJS handler
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setIsSending(true);
+    setContactStatus("");
+    try {
+      const result = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          name: contactName,
+          email: contactEmail,
+          message: contactMessage,
+          title: "Central Bridge Care",
+          email: contactEmail,
+        },
+        EMAILJS_USER_ID
+      );
+      setContactStatus("Message sent successfully!");
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+    } catch (error) {
+      console.error("EmailJS error:", error);
+      setContactStatus("Failed to send message. Please try again later.");
+    } finally {
+      setIsSending(false);
+    }
+  };
   return (
     <div
       className={`min-h-screen bg-gray-50 font-sans antialiased ${textColor}`}
@@ -399,8 +424,8 @@ const App = () => {
               </h2>
               <p className="text-lg leading-relaxed mb-6">
                 Central Bridge Care is a dedicated domiciliary care and living
-                support business based in Birmingham, UK. 
-                We are committed to delivering compassionate, high-quality, and person-centred
+                support business based in Birmingham, UK. We are committed to
+                delivering compassionate, high-quality, and person-centred
                 services that enable individuals to maintain their independence,
                 dignity, and well-being within the comfort and familiarity of
                 their own homes.
@@ -546,7 +571,7 @@ const App = () => {
                 <h3 className="text-2xl font-bold text-blue-800 mb-4 text-center">
                   Or Send Us a Message
                 </h3>
-                <form>
+                <form onSubmit={handleContactSubmit}>
                   <div className="mb-4">
                     <label
                       htmlFor="name"
@@ -560,6 +585,9 @@ const App = () => {
                       name="name"
                       className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Your Name"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      required
                     />
                   </div>
                   <div className="mb-4">
@@ -575,6 +603,9 @@ const App = () => {
                       name="email"
                       className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="your@example.com"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      required
                     />
                   </div>
                   <div className="mb-6">
@@ -590,24 +621,31 @@ const App = () => {
                       rows="5"
                       className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Tell us about your needs..."
+                      value={contactMessage}
+                      onChange={(e) => setContactMessage(e.target.value)}
+                      required
                     ></textarea>
                   </div>
                   <div className="flex justify-center">
                     <button
                       type="submit"
                       className={`${accentColor} ${whiteText} font-bold py-3 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-700`}
+                      disabled={isSending}
                     >
-                      Send Message
+                      {isSending ? "Sending..." : "Send Message"}
                     </button>
                   </div>
+                  {contactStatus && (
+                    <div className="mt-4 text-center text-blue-700 font-semibold">
+                      {contactStatus}
+                    </div>
+                  )}
                 </form>
                 <div className="mt-8 text-center">
                   <p className={`${lightTextColor} text-lg mb-2`}>
                     Alternatively, call us directly:
                   </p>
-                  <p className="text-xl font-semibold text-blue-700">
-                   07xxxx
-                  </p>
+                  <p className="text-xl font-semibold text-blue-700">07xxxx</p>
                   <p className="text-xl font-semibold text-blue-700">
                     cen...@gmail.com
                   </p>
