@@ -214,13 +214,15 @@ const App = () => {
       const result = await model.generateContent(prompt);
       const responseText = result.response.text();
       setRecommendationOutput(responseText || "No recommendation found.");
+      setIsLoadingRecommendation(false);
     } catch (error) {
       console.error("Gemini API error:", error);
       setRecommendationOutput(
         "There was an error getting a recommendation. Please try again later."
       );
+    setIsLoadingRecommendation(false);
     } finally {
-      setIsLoadingRecommendation_widgets(false);
+      setIsLoadingRecommendation(false);
     }
   };
 
