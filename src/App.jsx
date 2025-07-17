@@ -115,9 +115,11 @@ const App = () => {
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
-          from_name: contactName,
-          from_email: contactEmail,
-          message: contactMessage,
+          user_name: contactName,
+          user_email: contactEmail,
+          user_message: contactMessage,
+          to_name: "Central Bridge Care",
+          reply_to: contactEmail,
         },
         EMAILJS_USER_ID
       );
@@ -126,6 +128,7 @@ const App = () => {
       setContactEmail("");
       setContactMessage("");
     } catch (error) {
+      console.error("EmailJS error:", error);
       setContactStatus("Failed to send message. Please try again later.");
     } finally {
       setIsSending(false);
