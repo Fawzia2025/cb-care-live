@@ -10,34 +10,9 @@ import {
   Award,
   ArrowLeft,
   Loader2,
-} from "lucide-react";
-
-// Define ServiceDetailPage component outside App for clarity and to resolve potential parsing issues
-const ServiceDetailPage = (
-  { service, onBack } // Added opening parenthesis here
-) => (
-  <section className="py-16 bg-gray-100 min-h-screen">
-    <div className="container mx-auto px-4 max-w-4xl">
-      <button
-        onClick={onBack}
-        className="flex items-center text-blue-700 hover:text-blue-900 font-semibold mb-8 text-lg transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5 mr-2" /> Back to All Services
-      </button>
-      <div className="bg-white p-8 rounded-xl shadow-lg">
-        <h2 className="text-4xl font-bold text-blue-800 mb-6">
-          {service.name}
-        </h2>
-        <p className="text-lg leading-relaxed mb-4">{service.details}</p>
-        <p className="text-base text-gray-700 italic">
-          For more detailed information or to discuss a personalized care plan,
-          please contact us directly.
-        </p>
-        {/* Optionally add contact information or a mini-form here */}
-      </div>
-    </div>
-  </section>
-); // Added closing parenthesis here
+  Menu,
+  X,
+} from "lucide-react"; // Added Menu and X icons
 
 const App = () => {
   // State to manage which service detail page is currently displayed
@@ -46,6 +21,8 @@ const App = () => {
   const [careNeedsInput, setCareNeedsInput] = useState("");
   const [recommendationOutput, setRecommendationOutput] = useState("");
   const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
+  // State for mobile menu visibility
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Define a consistent color palette using Tailwind CSS classes
   const primaryColor = "bg-blue-700"; // Darker blue for accents - used for header, footer and contact section
@@ -167,23 +144,119 @@ const App = () => {
     },
   ];
 
+  // Component to display details of a selected service
+  const ServiceDetailPage = ({ service, onBack }) => (
+    <section className="py-16 bg-gray-100 min-h-screen">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <button
+          onClick={onBack}
+          className="flex items-center text-blue-700 hover:text-blue-900 font-semibold mb-8 text-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" /> Back to All Services
+        </button>
+        <div className="bg-white p-8 rounded-xl shadow-lg">
+          <h2 className="text-4xl font-bold text-blue-800 mb-6">
+            {service.name}
+          </h2>
+          <p className="text-lg leading-relaxed mb-4">{service.details}</p>
+          <p className="text-base text-gray-700 italic">
+            For more detailed information or to discuss a personalized care
+            plan, please contact us directly.
+          </p>
+          {/* Optionally add contact information or a mini-form here */}
+        </div>
+      </div>
+    </section>
+  );
+
+  // Function to get AI recommendation
+  const getCareRecommendation = async () => {
+    setIsLoadingRecommendation(true);
+    setRecommendationOutput(""); // Clear previous output
+
+    const serviceListForLLM = services
+      .map((s) => `- ${s.name}: ${s.description}`)
+      .join("\n");
+
+    const prompt = `You are a helpful assistant for Central Bridge Care, a domiciliary care provider in Birmingham.
+    Based on the user's described needs, recommend one or more of our services. Explain why the recommended service(s) are a good fit.
+    If no services are a perfect fit, suggest contacting us for a custom solution.
+    
+    Our available services are:
+    ${serviceListForLLM}
+    
+    User's needs: "${careNeedsInput}"
+    
+    Please provide your recommendation in a clear, friendly, and concise manner, directly addressing the user's needs.`; // Fixed unterminated string literal
+
+    let chatHistory = [];
+    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+    const payload = { contents: chatHistory };
+    //const apiKey = process.env.REACT_APP_GEMINI_API_KEY; // Reads from environment variable
+    const apiKey = import.meta.env.VITE_REACT_APP_GEMINI_API_KEY;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (
+        result.candidates &&
+        result.candidates.length > 0 &&
+        result.candidates[0].content &&
+        result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0
+      ) {
+        const text = result.candidates[0].content.parts[0].text;
+        setRecommendationOutput(text);
+      } else {
+        setRecommendationOutput(
+          "Sorry, I could not generate a recommendation at this time. Please try again or contact us directly."
+        );
+      }
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      setRecommendationOutput(
+        "There was an error getting a recommendation. Please try again later."
+      );
+    } finally {
+      setIsLoadingRecommendation(false);
+    }
+  };
+
   return (
     <div
       className={`min-h-screen bg-gray-50 font-sans antialiased ${textColor}`}
     >
-      {/* Header - Reverted to original blue background and logo/text */}
+      {/* Header - Mobile friendly */}
       <header className={`${primaryColor} py-4 shadow-md`}>
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            {/* Original Home icon and text logo */}
             <Home className={`${whiteText} w-8 h-8`} />
             <h1 className={`text-3xl font-bold ${whiteText}`}>
               Central Bridge Care
             </h1>
           </div>
-          <nav>
+          {/* Mobile menu button (Hamburger) */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`${whiteText} focus:outline-none`}
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-8 h-8" />
+              ) : (
+                <Menu className="w-8 h-8" />
+              )}
+            </button>
+          </div>
+          {/* Desktop navigation */}
+          <nav className="hidden md:block">
             <ul className="flex space-x-6">
-              {/* Navigation links reverted to whiteText */}
               <li>
                 <a
                   href="#home"
@@ -221,6 +294,52 @@ const App = () => {
         </div>
       </header>
 
+      {/* Mobile Menu Drawer */}
+      {isMobileMenuOpen && (
+        <div
+          className={`${primaryColor} md:hidden pb-4 transition-all duration-300 ease-in-out`}
+        >
+          <ul className="flex flex-col items-center space-y-4">
+            <li>
+              <a
+                onClick={() => setIsMobileMenuOpen(false)}
+                href="#home"
+                className={`block py-2 px-4 hover:bg-blue-600 rounded w-full text-center ${whiteText}`}
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <a
+                onClick={() => setIsMobileMenuOpen(false)}
+                href="#about"
+                className={`block py-2 px-4 hover:bg-blue-600 rounded w-full text-center ${whiteText}`}
+              >
+                About Us
+              </a>
+            </li>
+            <li>
+              <a
+                onClick={() => setIsMobileMenuOpen(false)}
+                href="#services"
+                className={`block py-2 px-4 hover:bg-blue-600 rounded w-full text-center ${whiteText}`}
+              >
+                Services
+              </a>
+            </li>
+            <li>
+              <a
+                onClick={() => setIsMobileMenuOpen(false)}
+                href="#contact"
+                className={`block py-2 px-4 hover:bg-blue-600 rounded w-full text-center ${whiteText}`}
+              >
+                Contact
+              </a>
+            </li>
+          </ul>
+        </div>
+      )}
+
       {/* Conditionally render ServiceDetailPage or main content */}
       {selectedService ? (
         <ServiceDetailPage
@@ -229,30 +348,46 @@ const App = () => {
         />
       ) : (
         <>
-          {/* Hero Section - Updated background image to a more descriptive placeholder */}
+          {/* Hero Section - Updated to a two-column layout with solid background and image on right */}
           <section
             id="home"
-            className="relative h-screen flex items-center justify-center text-center bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "url('https://placehold.co/1920x1080/4A90E2/FFFFFF?text=Compassionate+Home+Care+Clients+and+Caregivers')",
-            }}
+            className="relative min-h-screen flex items-center bg-blue-50 py-16"
           >
-            <div className="absolute inset-0 bg-black opacity-50"></div>
-            <div className="relative z-10 p-8 rounded-lg bg-white bg-opacity-90 max-w-2xl mx-4 shadow-xl">
-              <h2 className="text-5xl font-extrabold text-blue-800 mb-4 leading-tight">
-                Compassionate Home Care at the Heart of Birmingham
-              </h2>
-              <p className="text-xl text-gray-700 mb-8">
-                Empowering independence, ensuring dignity, and providing
-                tailored support in the comfort of your home.
-              </p>
-              <a
-                href="#contact"
-                className={`${accentColor} ${whiteText} font-semibold py-3 px-8 rounded-full shadow-lg hover:bg-green-600 transition-all text-lg`}
-              >
-                Get Started Today
-              </a>
+            {" "}
+            {/* Solid background color */}
+            <div className="container mx-auto px-4 relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+              {/* Text Column - Aligned left */}
+              <div className="text-center md:text-left md:w-1/2 p-4 text-blue-800">
+                {" "}
+                {/* Text color adjusted for light background */}
+                <h5 className="text-5xl font-extrabold mb-4 leading-tight">
+                  Compassionate Home Care at the Heart of Birmingham
+                </h5>
+                <p className="text-xl text-gray-700 mb-8">
+                  Empowering independence, ensuring dignity, and providing
+                  tailored support in the comfort of your home.
+                </p>
+                <a
+                  href="#contact"
+                  className={`${accentColor} ${whiteText} font-semibold py-3 px-8 rounded-full shadow-lg hover:bg-green-600 transition-all text-lg`}
+                >
+                  Get Started Today
+                </a>
+              </div>
+              {/* Image Column - Aligned right, using the uploaded image */}
+              <div className="md:w-1/2 flex justify-center md:justify-end p-4">
+                <img
+                  src="/homepage-hero.jpeg" // Updated to reference image from public folder
+                  //src="https://content.googleapis.com/v1/files/uploaded:242d25a2-f0c3-41a4-900a-a9ad0a8ed743.jpeg-ca9fb878-1318-4b8d-9706-1568321b658f?alt=media" // Your uploaded image URL
+                  alt="A compassionate caregiver assisting two older adults in a home setting"
+                  className="rounded-xl shadow-xl w-full h-auto max-w-md md:max-w-full"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src =
+                      "https://placehold.co/800x500/CCCCCC/000000?text=Image+Load+Error";
+                  }}
+                />
+              </div>
             </div>
           </section>
 
@@ -264,8 +399,8 @@ const App = () => {
               </h2>
               <p className="text-lg leading-relaxed mb-6">
                 Central Bridge Care is a dedicated domiciliary care and living
-                support business based in Birmingham, UK. We are committed to
-                delivering compassionate, high-quality, and person-centred
+                support business based in Birmingham, UK. 
+                We are committed to delivering compassionate, high-quality, and person-centred
                 services that enable individuals to maintain their independence,
                 dignity, and well-being within the comfort and familiarity of
                 their own homes.
@@ -381,7 +516,7 @@ const App = () => {
                   ></textarea>
                   <div className="flex justify-center">
                     <button
-                      // onClick={getCareRecommendation}
+                      onClick={getCareRecommendation}
                       className={`${accentColor} ${whiteText} font-bold py-3 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-700 flex items-center`}
                       disabled={isLoadingRecommendation}
                     >
@@ -471,10 +606,10 @@ const App = () => {
                     Alternatively, call us directly:
                   </p>
                   <p className="text-xl font-semibold text-blue-700">
-                    [Your Company Phone Number]
+                   07xxxx
                   </p>
                   <p className="text-xl font-semibold text-blue-700">
-                    [Your Company Email Address]
+                    cen...@gmail.com
                   </p>
                 </div>
               </div>
