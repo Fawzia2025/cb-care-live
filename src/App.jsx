@@ -12,7 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import emailjs from "emailjs-com";
-
+import { GoogleGenerativeAI } from "@google/generative-ai";
 // Define ServiceDetailPage component outside App for clarity and to resolve potential parsing issues
 const ServiceDetailPage = (
   { service, onBack } // Added opening parenthesis here
@@ -46,30 +46,21 @@ async function getGeminiRecommendation(input) {
   if (!apiKey) {
     throw new Error("Gemini API key is missing. Please set VITE_GEMINI_API_KEY in your .env file.");
   }
-  // Example Gemini API endpoint (replace with actual endpoint if different)
-  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + apiKey;
-  const body = {
-    contents: [
-      {
-        parts: [
-          { text: `Suggest the most relevant care services for the following needs: ${input}` }
-        ]
-      }
-    ]
-  };
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-  if (!response.ok) {
-    throw new Error("Failed to get recommendation from Gemini API");
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `Suggest the most relevant care services for the following needs: ${input}`;
+    const result = await model.generateContent(prompt);
+
+    // Access the response text
+    const responseText = result.response.text();
+    return responseText || "No recommendation found.";
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    throw new Error("Failed to get recommendation from Gemini API: " + error.message);
   }
-  const data = await response.json();
-  // Parse the response to get the recommendation text
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No recommendation found.";
 }
 
 const EMAILJS_SERVICE_ID = "service_mhbdu6x"; // <-- You need to fill in your actual EmailJS service ID
